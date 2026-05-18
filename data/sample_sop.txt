@@ -1,0 +1,43 @@
+# ClickPost Logistics Operations - Standard Operating Procedures (SOP)
+Version: 1.4
+Last Updated: 2026-05-15
+
+## 1. Customs Warehouse Delays
+
+### 1.1 Trigger
+A shipment crossing international borders has a status stuck at "Customs Clearance" for more than 48 hours without update.
+
+### 1.2 Procedure
+- **Initial Verification**: Verify the Commercial Invoice and AWB match the shipment contents in the logistics portal.
+- **Action**: Contact the designated customs broker via email (customs-broker@clickpost-logistics.test) with the AWB number.
+- **Customer Communication**: Send the "International Delay Notice" email template to the customer, informing them of a standard 3-5 day customs inspection.
+- **Escalation**: If the shipment is held for more than 5 days, escalate to the Regional Operations Manager.
+
+## 2. Webhook Delivery Failures
+
+### 2.1 Trigger
+The partner carrier's API returns a 500 error, or we do not receive standard status update webhooks for a batch of shipments within a 12-hour window.
+
+### 2.2 Procedure
+- **Monitoring**: Check the Datadog "Partner Webhook Health" dashboard. If failure rate > 10%, declare a P2 incident.
+- **Action**: Manually trigger the fallback polling job (`run_carrier_poll.sh`) to fetch latest statuses.
+- **Resolution**: Notify the engineering team (channel: #logistics-eng-alerts) with the carrier name and error logs. Do not manually update customer tracking links until the polling job completes.
+
+## 3. Return-to-Origin (RTO) Workflow
+
+### 3.1 Trigger
+A last-mile delivery agent marks a package as "Customer Unavailable" 3 times, or "Customer Refused Delivery".
+
+### 3.2 Procedure
+- **Validation**: Verify that 3 delivery attempts were logged with distinct timestamps and GPS coordinates near the destination.
+- **Action**: Change shipment status to "RTO Initiated" in the main dashboard.
+- **Billing**: Apply the standard RTO penalty fee to the shipper's account unless they have a "Free Returns" SLA.
+- **Routing**: Generate a return manifest and route the package back to the origin warehouse within 24 hours.
+
+## 4. Hub-Level Escalations
+
+### 4.1 Missing Packages
+If a package is scanned as "Arrived at Hub" but cannot be found for "Out for Delivery" within 24 hours, initiate a warehouse sweep. If not found in 48 hours, mark as "Lost in Transit" and begin the insurance claim process.
+
+### 4.2 Damaged Goods
+If a package arrives at a hub visibly damaged (crushed box, leaking), do NOT dispatch for delivery. Take 3 photos, upload them to the tracking record, mark as "Damaged - Hold", and notify the merchant support team.
