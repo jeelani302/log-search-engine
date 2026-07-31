@@ -6,25 +6,38 @@
   <title>Logistics SOP Search</title>
   <style>
     :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui;background:#08111f;color:#e8eef7}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 15% 10%,#17345c 0,transparent 42%),#08111f}
-    main{width:min(760px,calc(100% - 32px));padding:42px;border:1px solid #29415f;border-radius:22px;background:#0d1929dd;box-shadow:0 24px 80px #0008}
+    body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 5%,#17345c 0,transparent 36%),#08111f}
+    main{width:min(900px,calc(100% - 32px));margin:40px auto;padding:42px;border:1px solid #29415f;border-radius:22px;background:#0d1929dd;box-shadow:0 24px 80px #0008}
     .eyebrow{color:#62d9b7;font-weight:700;letter-spacing:.13em;text-transform:uppercase;font-size:.75rem}
     h1{font-size:clamp(2rem,6vw,4rem);line-height:1;margin:.5rem 0 1rem}p{color:#aab9cb;line-height:1.65}
-    form{display:flex;gap:10px;margin:30px 0 20px}input{flex:1;padding:15px 17px;border-radius:12px;border:1px solid #3a506d;background:#07111f;color:white;font-size:1rem}
+    h2{font-size:1.05rem;margin:0 0 12px}.lead{max-width:720px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:26px 0}.panel{padding:20px;border-radius:14px;background:#081321;border:1px solid #223853}.meta{display:flex;gap:8px;flex-wrap:wrap}.tag{padding:5px 9px;border-radius:999px;background:#142941;color:#9eb7d1;font-size:.78rem}.questions{display:flex;flex-wrap:wrap;gap:9px}.question{padding:9px 12px;background:#142941;color:#cfe1f2;border:1px solid #31506f;text-align:left;font-weight:600}
+    form{display:flex;gap:10px;margin:24px 0 20px}input{flex:1;padding:15px 17px;border-radius:12px;border:1px solid #3a506d;background:#07111f;color:white;font-size:1rem}
     button{border:0;border-radius:12px;padding:0 22px;background:#62d9b7;color:#062018;font-weight:800;cursor:pointer}
     button:disabled{opacity:.55}.card{padding:20px;border-radius:14px;background:#081321;border:1px solid #223853;margin-top:14px}.hidden{display:none}
-    small{color:#71849b}.source{white-space:pre-wrap;color:#aab9cb;font-size:.88rem;max-height:180px;overflow:auto}
-    @media(max-width:600px){main{padding:26px}form{flex-direction:column}button{padding:15px}}
+    small{color:#71849b}.source{padding:14px;margin-top:10px;border-left:3px solid #62d9b7;background:#0d1d2f}.source strong{display:block;color:#d7e5f3}.source code{color:#7f94aa}.source p{white-space:pre-wrap;font-size:.86rem;max-height:150px;overflow:auto;margin-bottom:0}.hint{font-size:.86rem}
+    @media(max-width:700px){main{padding:26px}.grid{grid-template-columns:1fr}form{flex-direction:column}button{padding:15px}}
   </style>
 </head>
 <body><main>
   <div class="eyebrow">Smart logistics search</div>
   <h1>Answers grounded in your SOP.</h1>
-  <p>Ask about customs delays, webhook failures, returns, or operational procedures in the bundled logistics guide.</p>
+  <p class="lead">A guided RAG demo for logistics operations. It searches one sample SOP, retrieves the relevant section, and answers only from that evidence.</p>
+  <div class="grid">
+    <section class="panel"><small>KNOWLEDGE SOURCE</small><h2>ClickPost Logistics Operations SOP</h2><p class="hint"><code>data/sample_sop.txt</code> · Version 1.4 · Updated 15 May 2026</p><div class="meta"><span class="tag">Customs delays</span><span class="tag">Webhook failures</span><span class="tag">RTO workflow</span><span class="tag">Hub escalations</span></div></section>
+    <section class="panel"><small>HOW TO DEMO IT</small><h2>Choose a realistic operations question</h2><p class="hint">Click an example below, or type your own question about the four SOP topics.</p></section>
+  </div>
+  <div class="questions" aria-label="Suggested questions">
+    <button class="question" type="button">Shipment stuck at customs for 48 hours—what next?</button>
+    <button class="question" type="button">What do we do when carrier webhooks fail?</button>
+    <button class="question" type="button">When should a shipment be marked RTO Initiated?</button>
+    <button class="question" type="button">How should a hub handle a damaged package?</button>
+    <button class="question" type="button">When is a missing package marked Lost in Transit?</button>
+  </div>
   <form id="form"><input id="question" required minlength="2" placeholder="What do we do after 48 hours at customs?"><button id="submit">Search</button></form>
-  <section id="result" class="card hidden"><small>ANSWER</small><p id="answer"></p><details><summary>View source context</summary><div id="sources"></div></details></section>
+  <section id="result" class="card hidden"><small>GROUNDED ANSWER</small><p id="answer"></p><details open><summary>Evidence retrieved from the SOP</summary><div id="sources"></div></details></section>
 </main><script>
 const form=document.querySelector('#form'),button=document.querySelector('#submit'),result=document.querySelector('#result');
+document.querySelectorAll('.question').forEach(item=>item.addEventListener('click',()=>{document.querySelector('#question').value=item.textContent;form.requestSubmit()}));
 form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;button.textContent='Searching…';result.classList.add('hidden');
-try{const response=await fetch('/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:document.querySelector('#question').value,top_k:3})});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Search failed');document.querySelector('#answer').textContent=data.answer;document.querySelector('#sources').innerHTML='';data.sources.forEach(source=>{const item=document.createElement('p');item.className='source';item.textContent=source;document.querySelector('#sources').append(item)});result.classList.remove('hidden')}catch(error){document.querySelector('#answer').textContent=error.message;result.classList.remove('hidden')}finally{button.disabled=false;button.textContent='Search'}});
+try{const response=await fetch('/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:document.querySelector('#question').value,top_k:3})});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Search failed');document.querySelector('#answer').textContent=data.answer;document.querySelector('#sources').innerHTML='';data.sources.forEach(source=>{const item=document.createElement('article');item.className='source';const title=document.createElement('strong');title.textContent=source.section;const file=document.createElement('code');file.textContent='Source: '+source.document;const excerpt=document.createElement('p');excerpt.textContent=source.content;item.append(title,file,excerpt);document.querySelector('#sources').append(item)});result.classList.remove('hidden')}catch(error){document.querySelector('#answer').textContent=error.message;result.classList.remove('hidden')}finally{button.disabled=false;button.textContent='Search'}});
 </script></body></html>
