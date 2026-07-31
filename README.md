@@ -8,6 +8,10 @@ This project demonstrates how to connect a Large Language Model (LLM) to interna
 
 ### [Open the Logistics SOP Search Demo →](https://logistics-sop-search.onrender.com/)
 
+### 12-second walkthrough
+
+![YZA Logistics SOP Search demo showing a sample query, grounded evidence, and custom SOP upload](assets/yza-logistics-search-demo.gif)
+
 Try the bundled **YZA Logistics Operations SOP Demo** with ready-made questions, or upload/paste your own `.txt` or `.md` SOP and search it directly in the browser. Custom documents stay inside the browser tab and are not uploaded or permanently stored.
 
 > **Portfolio disclaimer:** The bundled YZA SOP is fictional sample data created for this demonstration. It is not an official YZA document and contains no proprietary company information.
