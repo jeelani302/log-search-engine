@@ -1,4 +1,5 @@
-# ClickPost Logistics Operations - Standard Operating Procedures (SOP)
+# YZA Logistics Operations SOP Demo
+Fictional sample data created for a portfolio demonstration. This is not an official YZA document.
 Version: 1.4
 Last Updated: 2026-05-15
 
@@ -9,7 +10,7 @@ A shipment crossing international borders has a status stuck at "Customs Clearan
 
 ### 1.2 Procedure
 - **Initial Verification**: Verify the Commercial Invoice and AWB match the shipment contents in the logistics portal.
-- **Action**: Contact the designated customs broker via email (customs-broker@clickpost-logistics.test) with the AWB number.
+- **Action**: Contact the designated customs broker via email (customs-broker@yza-logistics.test) with the AWB number.
 - **Customer Communication**: Send the "International Delay Notice" email template to the customer, informing them of a standard 3-5 day customs inspection.
 - **Escalation**: If the shipment is held for more than 5 days, escalate to the Regional Operations Manager.
 
