@@ -17,7 +17,7 @@ from app.llm_client import generate_answer
 
 app = FastAPI(
     title="Smart Logistics RAG Search Engine",
-    description="A Retrieval-Augmented Generation (RAG) system for ClickPost logistics SOPs.",
+    description="A portfolio RAG demo using fictional YZA logistics SOP data.",
     version="1.0.0",
 )
 
