@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Logistics SOP Search</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui;background:#08111f;color:#e8eef7}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 15% 10%,#17345c 0,transparent 42%),#08111f}
+    main{width:min(760px,calc(100% - 32px));padding:42px;border:1px solid #29415f;border-radius:22px;background:#0d1929dd;box-shadow:0 24px 80px #0008}
+    .eyebrow{color:#62d9b7;font-weight:700;letter-spacing:.13em;text-transform:uppercase;font-size:.75rem}
+    h1{font-size:clamp(2rem,6vw,4rem);line-height:1;margin:.5rem 0 1rem}p{color:#aab9cb;line-height:1.65}
+    form{display:flex;gap:10px;margin:30px 0 20px}input{flex:1;padding:15px 17px;border-radius:12px;border:1px solid #3a506d;background:#07111f;color:white;font-size:1rem}
+    button{border:0;border-radius:12px;padding:0 22px;background:#62d9b7;color:#062018;font-weight:800;cursor:pointer}
+    button:disabled{opacity:.55}.card{padding:20px;border-radius:14px;background:#081321;border:1px solid #223853;margin-top:14px}.hidden{display:none}
+    small{color:#71849b}.source{white-space:pre-wrap;color:#aab9cb;font-size:.88rem;max-height:180px;overflow:auto}
+    @media(max-width:600px){main{padding:26px}form{flex-direction:column}button{padding:15px}}
+  </style>
+</head>
+<body><main>
+  <div class="eyebrow">Smart logistics search</div>
+  <h1>Answers grounded in your SOP.</h1>
+  <p>Ask about customs delays, webhook failures, returns, or operational procedures in the bundled logistics guide.</p>
+  <form id="form"><input id="question" required minlength="2" placeholder="What do we do after 48 hours at customs?"><button id="submit">Search</button></form>
+  <section id="result" class="card hidden"><small>ANSWER</small><p id="answer"></p><details><summary>View source context</summary><div id="sources"></div></details></section>
+</main><script>
+const form=document.querySelector('#form'),button=document.querySelector('#submit'),result=document.querySelector('#result');
+form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;button.textContent='Searching…';result.classList.add('hidden');
+try{const response=await fetch('/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:document.querySelector('#question').value,top_k:3})});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Search failed');document.querySelector('#answer').textContent=data.answer;document.querySelector('#sources').innerHTML='';data.sources.forEach(source=>{const item=document.createElement('p');item.className='source';item.textContent=source;document.querySelector('#sources').append(item)});result.classList.remove('hidden')}catch(error){document.querySelector('#answer').textContent=error.message;result.classList.remove('hidden')}finally{button.disabled=false;button.textContent='Search'}});
+</script></body></html>
