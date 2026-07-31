@@ -8,7 +8,9 @@ This project demonstrates how to connect a Large Language Model (LLM) to interna
 
 ### [Open the Logistics SOP Search Demo →](https://logistics-sop-search.onrender.com/)
 
-Try the bundled ClickPost logistics SOP with ready-made questions, or upload/paste your own `.txt` or `.md` SOP and search it directly in the browser. Custom documents stay inside the browser tab and are not uploaded or permanently stored.
+Try the bundled **YZA Logistics Operations SOP Demo** with ready-made questions, or upload/paste your own `.txt` or `.md` SOP and search it directly in the browser. Custom documents stay inside the browser tab and are not uploaded or permanently stored.
+
+> **Portfolio disclaimer:** The bundled YZA SOP is fictional sample data created for this demonstration. It is not an official YZA document and contains no proprietary company information.
 
 > The free Render instance can take a short time to open after inactivity. Once the page loads, searching runs entirely in the browser with no backend wake-up required.
 
@@ -95,15 +97,15 @@ curl -X 'POST' \
 **Example Response:**
 ```json
 {
-  "answer": "If a shipment is stuck at customs for 3 days (which is more than the 48-hour trigger), you should first verify that the Commercial Invoice and AWB match the shipment contents in the logistics portal. Then, contact the designated customs broker via email at customs-broker@clickpost-logistics.test with the AWB number. Finally, send the 'International Delay Notice' email template to the customer.",
+  "answer": "If a shipment is stuck at customs for 3 days (which is more than the 48-hour trigger), you should first verify that the Commercial Invoice and AWB match the shipment contents in the logistics portal. Then, contact the designated customs broker via email at customs-broker@yza-logistics.test with the AWB number. Finally, send the 'International Delay Notice' email template to the customer.",
   "sources": [
-    "## 1. Customs Warehouse Delays\n\n### 1.1 Trigger\nA shipment crossing international borders has a status stuck at \"Customs Clearance\" for more than 48 hours without update.\n\n### 1.2 Procedure\n- **Initial Verification**: Verify the Commercial Invoice and AWB match the shipment contents in the logistics portal.\n- **Action**: Contact the designated customs broker via email (customs-broker@clickpost-logistics.test) with the AWB number."
+    "## 1. Customs Warehouse Delays\n\n### 1.1 Trigger\nA shipment crossing international borders has a status stuck at \"Customs Clearance\" for more than 48 hours without update.\n\n### 1.2 Procedure\n- **Initial Verification**: Verify the Commercial Invoice and AWB match the shipment contents in the logistics portal.\n- **Action**: Contact the designated customs broker via email (customs-broker@yza-logistics.test) with the AWB number."
   ]
 }
 ```
 
 ## 🧠 Why RAG instead of Fine-Tuning?
 
-For a logistics company like ClickPost, internal policies (like carrier APIs or RTO rules) change weekly.
+For a logistics company like YZA, internal policies (like carrier APIs or RTO rules) can change frequently.
 - **Fine-tuning** requires retraining the model every time a policy changes (expensive and slow).
 - **RAG** allows you to just upload a new text file. The LLM instantly knows the new rules because it searches the live database before answering. 
