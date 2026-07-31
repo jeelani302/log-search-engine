@@ -171,7 +171,7 @@ def ingest_text(request: IngestTextRequest) -> dict:
 def demo() -> dict:
     return {
         "knowledge_base": {
-            "name": "ClickPost Logistics Operations — Standard Operating Procedures",
+            "name": "YZA Logistics Operations SOP Demo (fictional sample)",
             "file": "data/sample_sop.txt",
             "version": "1.4",
             "updated": "2026-05-15",
