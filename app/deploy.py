@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import secrets
 from collections import Counter
 from pathlib import Path
 
@@ -23,42 +24,51 @@ def _tokens(text: str) -> list[str]:
     return TOKEN_PATTERN.findall(text.lower())
 
 
-def _chunks() -> list[dict[str, str]]:
+def _chunks_from_text(text: str, document_name: str) -> list[dict[str, str]]:
     chunks: list[dict[str, str]] = []
-    for path in sorted(DATA_DIR.glob("*.txt")):
-        sections = re.split(r"\n(?=##?\s)", path.read_text(encoding="utf-8"))
-        for section in sections:
-            content = section.strip()
-            if not content:
-                continue
-            heading = next(
-                (line.lstrip("# ") for line in content.splitlines() if line.startswith("#")),
-                path.stem.replace("_", " ").title(),
-            )
-            chunks.append({"document": path.name, "section": heading, "content": content})
+    sections = re.split(r"\n(?=##?\s)", text)
+    for index, section in enumerate(sections, start=1):
+        content = section.strip()
+        if not content:
+            continue
+        heading = next(
+            (line.lstrip("# ") for line in content.splitlines() if line.startswith("#")),
+            f"Section {index}",
+        )
+        chunks.append({"document": document_name, "section": heading, "content": content})
     return chunks
 
 
-DOCUMENTS = _chunks()
-DOCUMENT_FREQUENCY = Counter(
-    token for document in DOCUMENTS for token in set(_tokens(document["content"]))
-)
+def _bundled_chunks() -> list[dict[str, str]]:
+    chunks: list[dict[str, str]] = []
+    for path in sorted(DATA_DIR.glob("*.txt")):
+        chunks.extend(_chunks_from_text(path.read_text(encoding="utf-8"), path.name))
+    return chunks
 
 
-def retrieve(question: str, limit: int) -> list[dict[str, str]]:
+DOCUMENTS = _bundled_chunks()
+KNOWLEDGE_BASES: dict[str, list[dict[str, str]]] = {}
+
+
+def retrieve(
+    question: str, documents: list[dict[str, str]], limit: int
+) -> list[dict[str, str]]:
     query = Counter(_tokens(question))
     if not query:
         return []
 
-    scored: list[tuple[float, str]] = []
-    total = max(len(DOCUMENTS), 1)
-    for document in DOCUMENTS:
+    document_frequency = Counter(
+        token for document in documents for token in set(_tokens(document["content"]))
+    )
+    scored: list[tuple[float, dict[str, str]]] = []
+    total = max(len(documents), 1)
+    for document in documents:
         terms = Counter(_tokens(document["content"]))
         score = 0.0
         for token, query_count in query.items():
             if token not in terms:
                 continue
-            inverse_frequency = math.log((total + 1) / (DOCUMENT_FREQUENCY[token] + 1)) + 1
+            inverse_frequency = math.log((total + 1) / (document_frequency[token] + 1)) + 1
             score += query_count * (1 + math.log(terms[token])) * inverse_frequency
         if score:
             scored.append((score, document))
@@ -98,6 +108,12 @@ def answer(question: str, context: list[str]) -> str:
 class QueryRequest(BaseModel):
     question: str = Field(min_length=2, max_length=1000)
     top_k: int = Field(default=3, ge=1, le=5)
+    knowledge_base_id: str | None = None
+
+
+class IngestTextRequest(BaseModel):
+    name: str = Field(default="uploaded-sop.txt", min_length=1, max_length=120)
+    content: str = Field(min_length=20, max_length=200_000)
 
 
 app = FastAPI(title="Smart Logistics Search Engine", version="2.0.0")
@@ -116,13 +132,39 @@ def health() -> dict:
 
 @app.post("/query")
 def query(request: QueryRequest) -> dict:
-    sources = retrieve(request.question, request.top_k)
+    documents = DOCUMENTS
+    if request.knowledge_base_id:
+        documents = KNOWLEDGE_BASES.get(request.knowledge_base_id, [])
+        if not documents:
+            raise HTTPException(
+                status_code=404,
+                detail="This uploaded SOP session expired. Please add the SOP again.",
+            )
+    sources = retrieve(request.question, documents, request.top_k)
     context = [source["content"] for source in sources]
     try:
         generated = answer(request.question, context)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Answer generation failed: {exc}") from exc
     return {"answer": generated, "sources": sources}
+
+
+@app.post("/ingest-text")
+def ingest_text(request: IngestTextRequest) -> dict:
+    safe_name = Path(request.name).name
+    chunks = _chunks_from_text(request.content, safe_name)
+    if not chunks:
+        raise HTTPException(status_code=400, detail="No searchable text was found.")
+    knowledge_base_id = secrets.token_urlsafe(18)
+    if len(KNOWLEDGE_BASES) >= 20:
+        KNOWLEDGE_BASES.pop(next(iter(KNOWLEDGE_BASES)))
+    KNOWLEDGE_BASES[knowledge_base_id] = chunks
+    return {
+        "status": "ready",
+        "knowledge_base_id": knowledge_base_id,
+        "document": safe_name,
+        "sections": len(chunks),
+    }
 
 
 @app.get("/demo")
