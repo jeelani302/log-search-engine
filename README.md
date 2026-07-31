@@ -4,6 +4,14 @@ A Retrieval-Augmented Generation (RAG) system designed for logistics teams. It a
 
 This project demonstrates how to connect a Large Language Model (LLM) to internal, private data without fine-tuning, preventing hallucinations.
 
+## 🚀 Live Demo
+
+### [Open the Logistics SOP Search Demo →](https://logistics-sop-search.onrender.com/)
+
+Try the bundled ClickPost logistics SOP with ready-made questions, or upload/paste your own `.txt` or `.md` SOP and search it directly in the browser. Custom documents stay inside the browser tab and are not uploaded or permanently stored.
+
+> The free Render instance can take a short time to open after inactivity. Once the page loads, searching runs entirely in the browser with no backend wake-up required.
+
 > **Part of the Logistics AI Suite**
 > This project pairs with the [Logistics RCA Agent](../logistic-support). Together, they demonstrate both structured data extraction (RCA Agent) and semantic search + RAG (this project).
 
