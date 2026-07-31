@@ -1,0 +1,121 @@
+"""Lightweight, stateless deployment entry point for free hosting."""
+
+from __future__ import annotations
+
+import math
+import os
+import re
+from collections import Counter
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = ROOT / "data"
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+
+
+def _tokens(text: str) -> list[str]:
+    return TOKEN_PATTERN.findall(text.lower())
+
+
+def _chunks() -> list[str]:
+    chunks: list[str] = []
+    for path in sorted(DATA_DIR.glob("*.txt")):
+        sections = re.split(r"\n(?=##?\s)", path.read_text(encoding="utf-8"))
+        chunks.extend(section.strip() for section in sections if section.strip())
+    return chunks
+
+
+DOCUMENTS = _chunks()
+DOCUMENT_FREQUENCY = Counter(
+    token for document in DOCUMENTS for token in set(_tokens(document))
+)
+
+
+def retrieve(question: str, limit: int) -> list[str]:
+    query = Counter(_tokens(question))
+    if not query:
+        return []
+
+    scored: list[tuple[float, str]] = []
+    total = max(len(DOCUMENTS), 1)
+    for document in DOCUMENTS:
+        terms = Counter(_tokens(document))
+        score = 0.0
+        for token, query_count in query.items():
+            if token not in terms:
+                continue
+            inverse_frequency = math.log((total + 1) / (DOCUMENT_FREQUENCY[token] + 1)) + 1
+            score += query_count * (1 + math.log(terms[token])) * inverse_frequency
+        if score:
+            scored.append((score, document))
+
+    return [document for _, document in sorted(scored, reverse=True)[:limit]]
+
+
+def _extractive_answer(context: list[str]) -> str:
+    if not context:
+        return "I don't have information about that in the provided documents."
+    lines = [line.strip(" -*") for line in context[0].splitlines()]
+    useful = [line for line in lines if line and not line.startswith("#")]
+    return " ".join(useful[:5])
+
+
+def answer(question: str, context: list[str]) -> str:
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return _extractive_answer(context)
+
+    from google import genai
+
+    prompt = (
+        "Answer using only the context. If it is absent, say you do not have "
+        "that information.\n\nContext:\n"
+        + "\n\n---\n\n".join(context)
+        + f"\n\nQuestion: {question}\nAnswer:"
+    )
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite"),
+        contents=prompt,
+    )
+    return (response.text or "").strip()
+
+
+class QueryRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=1000)
+    top_k: int = Field(default=3, ge=1, le=5)
+
+
+app = FastAPI(title="Smart Logistics Search Engine", version="2.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok", "documents": len(DOCUMENTS)}
+
+
+@app.post("/query")
+def query(request: QueryRequest) -> dict:
+    context = retrieve(request.question, request.top_k)
+    try:
+        generated = answer(request.question, context)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Answer generation failed: {exc}") from exc
+    return {"answer": generated, "sources": context}
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    return FileResponse(ROOT / "static" / "deploy.html")
