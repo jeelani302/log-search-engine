@@ -23,21 +23,29 @@ def _tokens(text: str) -> list[str]:
     return TOKEN_PATTERN.findall(text.lower())
 
 
-def _chunks() -> list[str]:
-    chunks: list[str] = []
+def _chunks() -> list[dict[str, str]]:
+    chunks: list[dict[str, str]] = []
     for path in sorted(DATA_DIR.glob("*.txt")):
         sections = re.split(r"\n(?=##?\s)", path.read_text(encoding="utf-8"))
-        chunks.extend(section.strip() for section in sections if section.strip())
+        for section in sections:
+            content = section.strip()
+            if not content:
+                continue
+            heading = next(
+                (line.lstrip("# ") for line in content.splitlines() if line.startswith("#")),
+                path.stem.replace("_", " ").title(),
+            )
+            chunks.append({"document": path.name, "section": heading, "content": content})
     return chunks
 
 
 DOCUMENTS = _chunks()
 DOCUMENT_FREQUENCY = Counter(
-    token for document in DOCUMENTS for token in set(_tokens(document))
+    token for document in DOCUMENTS for token in set(_tokens(document["content"]))
 )
 
 
-def retrieve(question: str, limit: int) -> list[str]:
+def retrieve(question: str, limit: int) -> list[dict[str, str]]:
     query = Counter(_tokens(question))
     if not query:
         return []
@@ -45,7 +53,7 @@ def retrieve(question: str, limit: int) -> list[str]:
     scored: list[tuple[float, str]] = []
     total = max(len(DOCUMENTS), 1)
     for document in DOCUMENTS:
-        terms = Counter(_tokens(document))
+        terms = Counter(_tokens(document["content"]))
         score = 0.0
         for token, query_count in query.items():
             if token not in terms:
@@ -55,7 +63,7 @@ def retrieve(question: str, limit: int) -> list[str]:
         if score:
             scored.append((score, document))
 
-    return [document for _, document in sorted(scored, reverse=True)[:limit]]
+    return [document for _, document in sorted(scored, key=lambda item: item[0], reverse=True)[:limit]]
 
 
 def _extractive_answer(context: list[str]) -> str:
@@ -108,12 +116,33 @@ def health() -> dict:
 
 @app.post("/query")
 def query(request: QueryRequest) -> dict:
-    context = retrieve(request.question, request.top_k)
+    sources = retrieve(request.question, request.top_k)
+    context = [source["content"] for source in sources]
     try:
         generated = answer(request.question, context)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Answer generation failed: {exc}") from exc
-    return {"answer": generated, "sources": context}
+    return {"answer": generated, "sources": sources}
+
+
+@app.get("/demo")
+def demo() -> dict:
+    return {
+        "knowledge_base": {
+            "name": "ClickPost Logistics Operations — Standard Operating Procedures",
+            "file": "data/sample_sop.txt",
+            "version": "1.4",
+            "updated": "2026-05-15",
+            "sections": [source["section"] for source in DOCUMENTS if source["section"].startswith(tuple("1234"))],
+        },
+        "suggested_questions": [
+            "What should we do when a shipment is stuck at customs for more than 48 hours?",
+            "What is the response procedure for carrier webhook failures?",
+            "When should a shipment be marked as RTO Initiated?",
+            "What should a hub do with a visibly damaged package?",
+            "When is a missing package marked as Lost in Transit?",
+        ],
+    }
 
 
 @app.get("/", include_in_schema=False)
